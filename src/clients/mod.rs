@@ -2,16 +2,13 @@
 //!
 //! This module contains client implementations for different AI model providers:
 //! - `anthropic`: Client for Anthropic's Claude models
-//! - `deepseek`: Client for DeepSeek's reasoning models
 //!
 //! Each client handles authentication, request building, and response parsing
 //! specific to its provider's API.
 
 pub mod anthropic;
-pub mod deepseek;
 
 pub use anthropic::AnthropicClient;
-pub use deepseek::DeepSeekClient;
 
 use crate::error::Result;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};

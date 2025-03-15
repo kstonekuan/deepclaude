@@ -63,14 +63,6 @@ pub enum ApiError {
     #[error("Invalid system prompt configuration")]
     InvalidSystemPrompt,
 
-    #[error("DeepSeek API error: {message}")]
-    DeepSeekError {
-        message: String,
-        type_: String,
-        param: Option<String>,
-        code: Option<String>,
-    },
-
     #[error("Anthropic API error: {message}")]
     AnthropicError {
         message: String,
@@ -127,17 +119,6 @@ impl IntoResponse for ApiError {
                         type_: "invalid_system_prompt".to_string(),
                         param: None,
                         code: None,
-                    },
-                },
-            ),
-            ApiError::DeepSeekError { message, type_, param, code } => (
-                StatusCode::BAD_REQUEST,
-                ErrorResponse {
-                    error: ErrorDetails {
-                        message: format!("DeepSeek API Error: {}", message),
-                        type_: format!("deepseek_{}", type_),
-                        param: param.clone(),
-                        code: code.clone(),
                     },
                 },
             ),

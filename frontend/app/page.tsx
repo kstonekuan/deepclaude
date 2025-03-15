@@ -73,7 +73,7 @@ export default function LandingPage() {
           </h1>
           
           <p className="max-w-[600px] text-lg sm:text-xl text-muted-foreground">
-          Harness the power of DeepSeek R1's reasoning and Claude's creativity and code generation capabilities with a unified API and chat interface.
+          Harness the power of Claude 3.7's extended thinking capabilities for deep reasoning, creativity, and code generation with a unified API and chat interface.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -181,7 +181,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-semibold">Zero Latency</h3>
                   <p className="text-muted-foreground">
-                    Instant responses of R1s CoT followed with Claude's response in a single stream powered by a high-performance streaming API written in Rust.
+                    Instant responses with Claude's thinking visible in real-time powered by a high-performance streaming API written in Rust.
                   </p>
                 </div>
               </Card>
@@ -231,9 +231,9 @@ export default function LandingPage() {
                   <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Sparkles className="h-6 w-6 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold">Dual AI Power</h3>
+                  <h3 className="text-xl font-semibold">Extended Thinking</h3>
                   <p className="text-muted-foreground">
-                    Combine DeepSeek R1's reasoning with Claude's creativity and code generation.
+                    See Claude's internal reasoning process with extended thinking capabilities, enabling deeper problem-solving and clearer explanations.
                   </p>
                 </div>
               </Card>
@@ -277,32 +277,32 @@ export default function LandingPage() {
             </h2>
             
             <div className="grid grid-cols-1 gap-6">
-              {/* Why R1 + Claude? */}
+              {/* Why Claude with Extended Thinking? */}
               <Card className="p-6 bg-card/50 backdrop-blur border-muted hover:border-primary/50 transition-colors">
               <Collapsible>
                 <CollapsibleTrigger 
                   className="w-full"
                   onClick={() => {
                     posthog.capture('faq_interaction', {
-                      question: 'why_r1_claude',
+                      question: 'why_claude_thinking',
                       timestamp: new Date().toISOString()
                     })
                   }}
                 >
                   <div className="flex items-center justify-between text-left">
-                    <h3 className="text-xl font-semibold">Why R1 + Claude?</h3>
+                    <h3 className="text-xl font-semibold">Why Claude with Extended Thinking?</h3>
                     <ChevronDown className="h-5 w-5 transform transition-transform duration-200" />
                   </div>
                 </CollapsibleTrigger>
                   <CollapsibleContent className="pt-4 text-left text-muted-foreground">
                     <p className="mb-4">
-                      DeepSeek R1's CoT trace demonstrates deep reasoning to the point of an LLM experiencing "metacognition" - correcting itself, thinking about edge cases, and so on. It's a quasi MCTS in natural language.
+                      Claude 3.7 introduces a powerful extended thinking capability that enables the model to reason through problems step-by-step before providing an answer, similar to how humans approach complex tasks.
                     </p>
                     <p className="mb-4">
-                      But R1 lacks at code generation, creativity, and conversational skills. The model that excels at all 3 is the Claude 3.5 Sonnet New from Anthropic. So how about we combine both of them? And take the best of both worlds? Enter DeepClaude!
+                      This allows Claude to solve problems more accurately, think through edge cases, and catch potential mistakes. The thinking process is streamed in real-time, giving you insight into the reasoning behind every response.
                     </p>
                     <p>
-                      With DeepClaude, you get a fast streaming R1 CoT + Claude Models in a single API call with your own API keys.
+                      With DeepClaude, you get a fast streaming API that reveals Claude's thinking process followed by its final, well-reasoned response in a single seamless experience.
                     </p>
                   </CollapsibleContent>
                 </Collapsible>
@@ -319,7 +319,7 @@ export default function LandingPage() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-4 text-left text-muted-foreground">
                     <p className="mb-4">
-                      Yes, 100% free and you use your own keys. The API wraps both DeepSeek and Anthropic streaming API into one. And you get some niceties like calculating the combined usage and price for you to use. We keep no logs and it's completely open-source - you can self-host it, modify it, redistribute it, whatever.
+                      Yes, 100% free and you use your own keys. The API wraps the Anthropic streaming API and adds the extended thinking feature, making it easy to use Claude's internal reasoning. You also get some niceties like calculating the usage and price for you. We keep no logs and it's completely open-source - you can self-host it, modify it, redistribute it, whatever.
                     </p>
                     <p>
                       Feel free to use this at scale, we use this in production at Asterisk serving millions of tokens in parallel daily and it hasn't failed us "yet". And like all nice things, just don't abuse it.
@@ -340,7 +340,7 @@ export default function LandingPage() {
           </div>
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <h2 className="text-2xl sm:text-3xl font-bold mb-6">
-              Start reading some AI internal monologue?
+              Ready to see how Claude thinks?
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
               No sign up. No credit card. No data stored.

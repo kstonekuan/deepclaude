@@ -1,10 +1,10 @@
 <div align="center">
 
-<h1>DeepClaude 🐬🧠</h1>
+<h1>DeepClaude 🧠</h1>
 
 <img src="frontend/public/deepclaude.png" width="300">
 
-Harness the power of DeepSeek R1's reasoning and Claude's creativity and code generation capabilities with a unified API and chat interface.
+Enhance Claude's capabilities with Extended Thinking - a unified API and chat interface for powerful reasoning and generation.
 
 [![GitHub license](https://img.shields.io/github/license/getasterisk/deepclaude)](https://github.com/getasterisk/deepclaude/blob/main/LICENSE.md)
 [![Rust](https://img.shields.io/badge/rust-v1.75%2B-orange)](https://www.rust-lang.org/)
@@ -22,7 +22,7 @@ Harness the power of DeepSeek R1's reasoning and Claude's creativity and code ge
 ## Table of Contents
 - [Overview](#overview)
 - [Features](#features)
-- [Why R1 + Claude?](#why-r1--claude)
+- [Why Extended Thinking?](#why-extended-thinking)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
@@ -39,31 +39,39 @@ Harness the power of DeepSeek R1's reasoning and Claude's creativity and code ge
 
 ## Overview
 
-DeepClaude is a high-performance LLM inference API that combines DeepSeek R1's Chain of Thought (CoT) reasoning capabilities with Anthropic Claude's creative and code generation prowess. It provides a unified interface for leveraging the strengths of both models while maintaining complete control over your API keys and data.
+DeepClaude is a high-performance LLM inference API that harnesses Claude 3.7 Sonnet's Extended Thinking capabilities. It provides a streamlined interface for accessing advanced reasoning and generation capabilities while maintaining complete control over your API keys and data.
 
 ## Features
 
-🚀 **Zero Latency** - Instant responses with R1's CoT followed by Claude's response in a single stream, powered by a high-performance Rust API
+🚀 **Advanced Reasoning** - Access Claude's Extended Thinking capabilities for transparent step-by-step reasoning, powered by a high-performance Rust API
 
 🔒 **Private & Secure** - End-to-end security with local API key management. Your data stays private
 
-⚙️ **Highly Configurable** - Customize every aspect of the API and interface to match your needs
+⚙️ **Highly Configurable** - Customize thinking parameters, output length, and more to match your needs
 
 🌟 **Open Source** - Free and open-source codebase. Contribute, modify, and deploy as you wish
 
-🤖 **Dual AI Power** - Combine DeepSeek R1's reasoning with Claude's creativity and code generation
+🤖 **Enhanced Intelligence** - Leverage structured thinking processes for better problem-solving and content generation
 
 🔑 **Managed BYOK API** - Use your own API keys with our managed infrastructure for complete control
 
-## Why R1 + Claude?
+## Why Extended Thinking?
 
-DeepSeek R1's CoT trace demonstrates deep reasoning to the point of an LLM experiencing "metacognition" - correcting itself, thinking about edge cases, and performing quasi Monte Carlo Tree Search in natural language.
+Claude 3.7 Sonnet's Extended Thinking feature provides unprecedented transparency into the model's reasoning process, allowing it to tackle complex problems with structured, step-by-step thinking.
 
-However, R1 lacks in code generation, creativity, and conversational skills. Claude 3.5 Sonnet excels in these areas, making it the perfect complement. DeepClaude combines both models to provide:
+Extended Thinking enables Claude to:
 
-- R1's exceptional reasoning and problem-solving capabilities
-- Claude's superior code generation and creativity
-- Fast streaming responses in a single API call
+- Break down complex problems into manageable components
+- Explore multiple approaches and evaluate their merits
+- Catch and correct errors in its own reasoning
+- Consider edge cases and limitations
+- Document its entire thought process for transparency
+
+DeepClaude provides a streamlined interface to these capabilities with:
+
+- Configurable thinking budgets to control depth of reasoning
+- Seamless integration with streaming for real-time thought visibility
+- Support for large context windows and extended outputs
 - Complete control with your own API keys
 
 ## Getting Started
@@ -71,8 +79,7 @@ However, R1 lacks in code generation, creativity, and conversational skills. Cla
 ### Prerequisites
 
 - Rust 1.75 or higher
-- DeepSeek API key
-- Anthropic API key
+- Anthropic API key (with access to Claude 3.7 Sonnet)
 
 ### Installation
 
@@ -112,13 +119,20 @@ import requests
 response = requests.post(
     "http://127.0.0.1:1337/",
     headers={
-        "X-DeepSeek-API-Token": "<YOUR_DEEPSEEK_API_KEY>",
         "X-Anthropic-API-Token": "<YOUR_ANTHROPIC_API_KEY>"
     },
     json={
         "messages": [
             {"role": "user", "content": "How many 'r's in the word 'strawberry'?"}
-        ]
+        ],
+        "anthropic_config": {
+            "body": {
+                "thinking": {
+                    "type": "enabled",
+                    "budget_tokens": 16000
+                }
+            }
+        }
     }
 )
 
@@ -138,14 +152,21 @@ async def stream_response():
             "POST",
             "http://127.0.0.1:1337/",
             headers={
-                "X-DeepSeek-API-Token": "<YOUR_DEEPSEEK_API_KEY>",
                 "X-Anthropic-API-Token": "<YOUR_ANTHROPIC_API_KEY>"
             },
             json={
                 "stream": True,
                 "messages": [
                     {"role": "user", "content": "How many 'r's in the word 'strawberry'?"}
-                ]
+                ],
+                "anthropic_config": {
+                    "body": {
+                        "thinking": {
+                            "type": "enabled",
+                            "budget_tokens": 16000
+                        }
+                    }
+                }
             }
         ) as response:
             response.raise_for_status()
@@ -156,8 +177,11 @@ async def stream_response():
                         try:
                             parsed_data = json.loads(data)
                             if 'content' in parsed_data:
-                                content = parsed_data.get('content', '')[0]['text']
-                                print(content, end='',flush=True)
+                                for block in parsed_data.get('content', []):
+                                    if block.get('content_type') == 'thinking':
+                                        print("\n[THINKING] ", block.get('thinking', ''))
+                                    elif block.get('content_type') == 'text':
+                                        print(block.get('text', ''), end='', flush=True)
                             else:
                                 print(data, flush=True)
                         except json.JSONDecodeError:
@@ -177,13 +201,19 @@ The API supports extensive configuration through the request body:
     "verbose": false,
     "system": "Optional system prompt",
     "messages": [...],
-    "deepseek_config": {
-        "headers": {},
-        "body": {}
-    },
     "anthropic_config": {
-        "headers": {},
-        "body": {}
+        "headers": {
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "output-128k-2025-02-19"
+        },
+        "body": {
+            "model": "claude-3-7-sonnet-20250219",
+            "max_tokens": 32000,
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": 16000
+            }
+        }
     }
 }
 ```
@@ -219,8 +249,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 
 DeepClaude is a free and open-source project by [Asterisk](https://asterisk.so/). Special thanks to:
 
-- DeepSeek for their incredible R1 model
-- Anthropic for Claude's capabilities
+- Anthropic for Claude's capabilities and Extended Thinking feature
 - The open-source community for their continuous support
 
 ---

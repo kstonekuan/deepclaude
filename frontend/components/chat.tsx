@@ -38,7 +38,6 @@ interface ChatProps {
   selectedModel: string
   onModelChange: (model: string) => void
   apiTokens: {
-    deepseekApiToken: string
     anthropicApiToken: string
   }
 }
@@ -49,7 +48,7 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [openThinking, setOpenThinking] = useState<number | null>(null)
-  const [currentModel, setCurrentModel] = useState(selectedModel)
+  const [currentModel, setCurrentModel] = useState(selectedModel || "claude-3-7-sonnet-20250219")
   const parentRef = useRef<HTMLDivElement>(null)
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true)
   const [isScrolling, setIsScrolling] = useState(false)
@@ -407,7 +406,7 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
 
   const handleSubmit = async () => {
     if (!input.trim() || isLoading) return
-    if (!apiTokens.deepseekApiToken || !apiTokens.anthropicApiToken) return
+    if (!apiTokens.anthropicApiToken) return
 
     // Track message sent
     posthog.capture('message_sent', {
@@ -455,26 +454,29 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
           content: msg.content,
           role: msg.role
         })),
-        deepseek_config: {
-          headers: {},
-          body: { temperature: 0 }
-        },
         anthropic_config: {
-          headers: { "anthropic-version": "2023-06-01" },
+          headers: { 
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "output-128k-2025-02-19"
+          },
           body: {
-            temperature: 0,
-            model: selectedModel
+            temperature: 1,
+            model: currentModel,
+            max_tokens: 128000,
+            thinking: {
+              type: "enabled",
+              budget_tokens: 32000
+            }
           }
         }
       }
 
-      const response = await fetch("https://api.deepclaude.com", {
+      const response = await fetch("http://localhost:1337", {
         method: "POST",
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
-          "X-DeepSeek-API-Token": apiTokens.deepseekApiToken,
           "X-Anthropic-API-Token": apiTokens.anthropicApiToken
         },
         body: JSON.stringify(requestBody)
@@ -598,7 +600,7 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
     }
   }
 
-  const hasApiTokens = apiTokens.deepseekApiToken && apiTokens.anthropicApiToken
+  const hasApiTokens = apiTokens.anthropicApiToken
 
   return (
     <div className="flex min-h-screen">
@@ -810,6 +812,7 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {[
+                    "claude-3-7-sonnet-20250219",
                     "claude-3-5-sonnet-20241022",
                     "claude-3-5-sonnet-latest",
                     "claude-3-5-haiku-20241022",

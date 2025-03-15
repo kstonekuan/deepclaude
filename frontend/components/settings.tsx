@@ -16,16 +16,13 @@ import { useForm } from "react-hook-form"
 interface SettingsFormValues {
   model: string
   systemPrompt: string
-  deepseekApiToken: string
   anthropicApiToken: string
-  deepseekHeaders: { key: string; value: string }[]
-  deepseekBody: { key: string; value: string }[]
   anthropicHeaders: { key: string; value: string }[]
   anthropicBody: { key: string; value: string }[]
 }
 
 interface SettingsProps {
-  onSettingsChange: (settings: { deepseekApiToken: string; anthropicApiToken: string }) => void
+  onSettingsChange: (settings: { anthropicApiToken: string }) => void
 }
 
 export function Settings({ onSettingsChange }: SettingsProps) {
@@ -36,12 +33,19 @@ export function Settings({ onSettingsChange }: SettingsProps) {
   const form = useForm<SettingsFormValues>({
     defaultValues: {
       systemPrompt: "You are a helpful AI assistant who excels at reasoning and responds in Markdown format. For code snippets, you wrap them in Markdown codeblocks with it's language specified.",
-      deepseekApiToken: "",
       anthropicApiToken: "",
-      deepseekHeaders: [],
-      deepseekBody: [],
-      anthropicHeaders: [{ key: "anthropic-version", value: "2023-06-01" }],
-      anthropicBody: []
+      anthropicHeaders: [
+        { key: "anthropic-version", value: "2023-06-01" },
+        { key: "anthropic-beta", value: "output-128k-2025-02-19" }
+      ],
+      anthropicBody: [
+        { key: "thinking", value: JSON.stringify({
+          type: "enabled",
+          budget_tokens: 32000
+        }, null, 2) },
+        { key: "temperature", value: "1" },
+        { key: "max_tokens", value: "128000" }
+      ]
     }
   })
 
@@ -50,9 +54,22 @@ export function Settings({ onSettingsChange }: SettingsProps) {
     const savedSettings = localStorage.getItem('deepclaude-settings')
     if (savedSettings) {
       const settings = JSON.parse(savedSettings)
-      form.reset(settings)
+      // Convert old settings format to new format if needed
+      const newSettings = {
+        systemPrompt: settings.systemPrompt,
+        anthropicApiToken: settings.anthropicApiToken,
+        anthropicHeaders: settings.anthropicHeaders || [{ key: "anthropic-version", value: "2023-06-01" }],
+        anthropicBody: settings.anthropicBody || [
+          { key: "thinking", value: JSON.stringify({
+            type: "enabled",
+            budget_tokens: 32000
+          }, null, 2) },
+          { key: "temperature", value: "1" },
+          { key: "max_tokens", value: "128000" }
+        ]
+      }
+      form.reset(newSettings)
       onSettingsChange({
-        deepseekApiToken: settings.deepseekApiToken,
         anthropicApiToken: settings.anthropicApiToken
       })
     }
@@ -62,18 +79,14 @@ export function Settings({ onSettingsChange }: SettingsProps) {
   const debouncedSave = useCallback((data: SettingsFormValues) => {
     localStorage.setItem('deepclaude-settings', JSON.stringify(data))
     onSettingsChange({
-      deepseekApiToken: data.deepseekApiToken,
       anthropicApiToken: data.anthropicApiToken
     })
 
     // Track settings update
     posthog.capture('settings_updated', {
       model: data.model,
-      has_deepseek_token: !!data.deepseekApiToken,
       has_anthropic_token: !!data.anthropicApiToken,
       has_system_prompt: !!data.systemPrompt,
-      deepseek_headers_count: data.deepseekHeaders.length,
-      deepseek_body_count: data.deepseekBody.length,
       anthropic_headers_count: data.anthropicHeaders.length,
       anthropic_body_count: data.anthropicBody.length,
       timestamp: new Date().toISOString()
@@ -106,16 +119,22 @@ export function Settings({ onSettingsChange }: SettingsProps) {
   const handleReset = () => {
     form.reset({
       systemPrompt: "You are a helpful AI assistant who excels at reasoning and responds in Markdown format. For code snippets, you wrap them in Markdown codeblocks with it's language specified.",
-      deepseekApiToken: "",
       anthropicApiToken: "",
-      deepseekHeaders: [],
-      deepseekBody: [],
-      anthropicHeaders: [{ key: "anthropic-version", value: "2023-06-01" }],
-      anthropicBody: []
+      anthropicHeaders: [
+        { key: "anthropic-version", value: "2023-06-01" },
+        { key: "anthropic-beta", value: "output-128k-2025-02-19" }
+      ],
+      anthropicBody: [
+        { key: "thinking", value: JSON.stringify({
+          type: "enabled",
+          budget_tokens: 32000
+        }, null, 2) },
+        { key: "temperature", value: "1" },
+        { key: "max_tokens", value: "128000" }
+      ]
     })
     localStorage.removeItem('deepclaude-settings')
     onSettingsChange({
-      deepseekApiToken: "",
       anthropicApiToken: ""
     })
 
@@ -134,7 +153,7 @@ export function Settings({ onSettingsChange }: SettingsProps) {
     name,
     label 
   }: { 
-    name: "deepseekHeaders" | "deepseekBody" | "anthropicHeaders" | "anthropicBody"
+    name: "anthropicHeaders" | "anthropicBody"
     label: string 
   }) => {
     const pairs = form.watch(name)
@@ -197,9 +216,9 @@ export function Settings({ onSettingsChange }: SettingsProps) {
             <Settings2 className="h-4 w-4" />
             Configure
           </Button>
-          {!form.getValues("deepseekApiToken") || !form.getValues("anthropicApiToken") ? (
+          {!form.getValues("anthropicApiToken") ? (
             <div className="absolute top-[48px] right-0 bg-muted text-muted-foreground px-4 py-2 rounded-lg text-sm border border-border before:content-[''] before:absolute before:top-[-6px] before:right-6 before:w-3 before:h-3 before:bg-muted before:border-l before:border-t before:border-border before:rotate-45">
-              Configure API tokens to start
+              Configure Anthropic API token to start
             </div>
           ) : null}
         </div>
@@ -226,7 +245,6 @@ export function Settings({ onSettingsChange }: SettingsProps) {
                   const data = form.getValues()
                   localStorage.setItem('deepclaude-settings', JSON.stringify(data))
                   onSettingsChange({
-                    deepseekApiToken: data.deepseekApiToken,
                     anthropicApiToken: data.anthropicApiToken
                   })
                   toast({
@@ -247,23 +265,6 @@ export function Settings({ onSettingsChange }: SettingsProps) {
           <form className="space-y-6 pt-6">
 
             <div className="space-y-6">
-              <FormField
-                control={form.control}
-                name="deepseekApiToken"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>DeepSeek API Token</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Enter DeepSeek API token..."
-                        {...field}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="anthropicApiToken"
@@ -300,12 +301,6 @@ export function Settings({ onSettingsChange }: SettingsProps) {
             />
 
             <div className="space-y-6">
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">DeepSeek Configuration</h4>
-                <KeyValuePairFields name="deepseekHeaders" label="Headers" />
-                <KeyValuePairFields name="deepseekBody" label="Body" />
-              </div>
-
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Anthropic Configuration</h4>
                 <KeyValuePairFields name="anthropicHeaders" label="Headers" />

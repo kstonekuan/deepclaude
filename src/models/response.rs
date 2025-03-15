@@ -9,19 +9,16 @@ use std::collections::HashMap;
 
 /// Primary response structure for chat API endpoints.
 ///
-/// Contains the complete response from both AI models, including
+/// Contains the complete response from the Anthropic API, including
 /// content blocks, usage statistics, and optional raw API responses.
 #[derive(Debug, Serialize, Clone)]
 pub struct ApiResponse {
     pub created: DateTime<Utc>,
     pub content: Vec<ContentBlock>,
-    
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub deepseek_response: Option<ExternalApiResponse>,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub anthropic_response: Option<ExternalApiResponse>,
-    
+
     pub combined_usage: CombinedUsage,
 }
 
@@ -33,7 +30,14 @@ pub struct ApiResponse {
 pub struct ContentBlock {
     #[serde(rename = "type")]
     pub content_type: String,
+    #[serde(default)]
     pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<String>,
 }
 
 /// Raw response from an external API.
@@ -47,21 +51,19 @@ pub struct ExternalApiResponse {
     pub body: serde_json::Value,
 }
 
-/// Combined usage statistics from both AI models.
+/// Usage statistics for API calls.
 ///
-/// Aggregates token usage and cost information from both
-/// DeepSeek and Anthropic API calls.
+/// Contains token usage and cost information from
+/// Anthropic API calls.
 #[derive(Debug, Serialize, Clone)]
 pub struct CombinedUsage {
     pub total_cost: String,
-    pub deepseek_usage: DeepSeekUsage,
     pub anthropic_usage: AnthropicUsage,
 }
 
-/// Usage statistics for DeepSeek API calls.
+/// Usage statistics for DeepSeek API calls (deprecated).
 ///
-/// Tracks token consumption and costs specific to
-/// DeepSeek model usage.
+/// Kept for backwards compatibility but no longer actively used.
 #[derive(Debug, Serialize, Clone)]
 pub struct DeepSeekUsage {
     pub input_tokens: u32,
@@ -96,28 +98,19 @@ pub struct AnthropicUsage {
 #[serde(tag = "type")]
 pub enum StreamEvent {
     #[serde(rename = "start")]
-    Start {
-        created: DateTime<Utc>,
-    },
-    
+    Start { created: DateTime<Utc> },
+
     #[serde(rename = "content")]
-    Content {
-        content: Vec<ContentBlock>,
-    },
-    
+    Content { content: Vec<ContentBlock> },
+
     #[serde(rename = "usage")]
-    Usage {
-        usage: CombinedUsage,
-    },
-    
+    Usage { usage: CombinedUsage },
+
     #[serde(rename = "done")]
     Done,
-    
+
     #[serde(rename = "error")]
-    Error {
-        message: String,
-        code: u16,
-    },
+    Error { message: String, code: u16 },
 }
 
 impl ContentBlock {
@@ -134,6 +127,9 @@ impl ContentBlock {
         Self {
             content_type: "text".to_string(),
             text: text.into(),
+            thinking: None,
+            signature: None,
+            data: None,
         }
     }
 
@@ -150,6 +146,9 @@ impl ContentBlock {
         Self {
             content_type: block.content_type,
             text: block.text,
+            thinking: block.thinking,
+            signature: block.signature,
+            data: block.data,
         }
     }
 }
@@ -169,18 +168,9 @@ impl ApiResponse {
         Self {
             created: Utc::now(),
             content: vec![ContentBlock::text(content)],
-            deepseek_response: None,
             anthropic_response: None,
             combined_usage: CombinedUsage {
                 total_cost: "$0.00".to_string(),
-                deepseek_usage: DeepSeekUsage {
-                    input_tokens: 0,
-                    output_tokens: 0,
-                    reasoning_tokens: 0,
-                    cached_input_tokens: 0,
-                    total_tokens: 0,
-                    total_cost: "$0.00".to_string(),
-                },
                 anthropic_usage: AnthropicUsage {
                     input_tokens: 0,
                     output_tokens: 0,
