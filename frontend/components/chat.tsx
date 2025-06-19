@@ -89,17 +89,6 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
     }
   }, [isLoading, thinkingStartTime, isThinkingComplete])
 
-  // Load chats from localStorage on mount and create new chat
-  useEffect(() => {
-    const storedChats = localStorage.getItem('deepclaude-chats')
-    if (storedChats) {
-      const parsedChats = JSON.parse(storedChats)
-      setChats(parsedChats)
-    }
-    // Always create a new chat on mount
-    createNewChat()
-  }, [])
-
   // Save chats to localStorage whenever they change
   useEffect(() => {
     if (chats.length > 0) {
@@ -150,7 +139,7 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
   }
 
   // Create a new chat
-  const createNewChat = () => {
+  const createNewChat = useCallback(() => {
     const chatId = typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
       : generateUUID()
@@ -168,7 +157,18 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
       chat_id: chatId,
       timestamp: new Date().toISOString()
     })
-  }
+  }, [posthog])
+
+  // Load chats from localStorage on mount and create new chat
+  useEffect(() => {
+    const storedChats = localStorage.getItem('deepclaude-chats')
+    if (storedChats) {
+      const parsedChats = JSON.parse(storedChats)
+      setChats(parsedChats)
+    }
+    // Always create a new chat on mount
+    createNewChat()
+  }, [createNewChat])
 
   // Update current chat
   const updateCurrentChat = useCallback(() => {
@@ -351,24 +351,27 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
               open={openThinking === index}
               onOpenChange={(open) => setOpenThinking(open ? index : null)}
             >
-              <div className="border border-border/40 rounded-lg message-transition" data-loaded="true">
+              <div className="border border-indigo-400/20 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/10 rounded-lg message-transition mb-3 shadow-sm" data-loaded="true">
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full flex items-center justify-between p-2 text-sm text-muted-foreground hover:text-primary"
+                    className="w-full flex items-center justify-between p-2 text-sm text-indigo-700 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/20"
                   >
                     <div className="flex items-center gap-2">
-                      {!message.content && (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                      {(isLoading || !isThinkingComplete) && (
+                        <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
                       )}
-                      Thinking
+                      <span className="font-medium">Thinking</span>
+                      {isLoading && !isThinkingComplete && (
+                        <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full animate-pulse">Live</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">
+                      <span className="text-indigo-600/80 dark:text-indigo-400/80">
                         {isThinkingComplete
                           ? `Thought for ${formatElapsedTime(elapsedTime)}`
-                          : formatElapsedTime(elapsedTime)}
+                          : `Thinking... ${formatElapsedTime(elapsedTime)}`}
                       </span>
                       {openThinking === index ? (
                         <ChevronDown className="h-4 w-4" />
@@ -379,8 +382,22 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="p-4 text-sm italic text-muted-foreground whitespace-pre-wrap border-t border-border/40 message-content">
-                    {message.thinking}
+                  <div className="p-4 text-sm bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-200 whitespace-pre-wrap border-t border-indigo-200 dark:border-indigo-800/50 message-content overflow-auto max-h-[600px] relative prose prose-indigo dark:prose-invert max-w-none">
+                    {!isLoading && message.thinking && <CopyButton value={message.thinking} src="thinking" />}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                      components={renderers}
+                    >
+                      {message.thinking || ""}
+                    </ReactMarkdown>
+                    {isLoading && !isThinkingComplete && (
+                      <div className="h-5 w-5 mt-2">
+                        <span className="inline-block h-1 w-1 rounded-full bg-indigo-400 mr-1 animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                        <span className="inline-block h-1 w-1 rounded-full bg-indigo-400 mr-1 animate-bounce" style={{ animationDelay: "100ms" }}></span>
+                        <span className="inline-block h-1 w-1 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: "200ms" }}></span>
+                      </div>
+                    )}
                   </div>
                 </CollapsibleContent>
               </div>
@@ -465,7 +482,7 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
             max_tokens: 128000,
             thinking: {
               type: "enabled",
-              budget_tokens: 32000
+              budget_tokens: 64000 // Increased token budget for more detailed thinking
             }
           }
         }
@@ -489,79 +506,55 @@ export function Chat({ selectedModel, onModelChange, apiTokens }: ChatProps) {
       currentMessageRef.current = {
         role: "assistant",
         content: "",
-        thinking: ""
+        thinking: "" // Initialize thinking to empty string to ensure it's always available
       }
-
-      let isThinking = false
+      
+      // Add empty assistant message to start the streaming UI immediately
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "",
+        thinking: ""
+      }])
 
       const processLine = (line: string) => {
         if (!line.trim() || !line.startsWith("data: ")) return
 
-        const data = JSON.parse(line.slice(6))
+        try {
+          const data = JSON.parse(line.slice(6))
 
-        if (data.type === "content") {
-          for (const content of data.content) {
-            if (!currentMessageRef.current) return
+          if (data.type === "content") {
+            for (const content of data.content) {
+              if (!currentMessageRef.current) return
 
-            if (content.type === "text") {
-              if (content.text.startsWith("<thinking>")) {
-                isThinking = true
-              } else if (content.text.endsWith("</thinking>")) {
-                isThinking = false
-                setIsThinkingComplete(true)
-              } else {
-                if (isThinking) {
-                  currentMessageRef.current.thinking += content.text
-                } else {
-                  currentMessageRef.current.content += content.text
-                }
-
-                // Update message immediately with optimized state update
-                setMessages(prev => {
-                  // Avoid unnecessary array operations if content hasn't changed
-                  const lastMessage = prev[prev.length - 1]
-                  if (lastMessage?.role === "assistant" &&
-                    lastMessage.content === currentMessageRef.current!.content &&
-                    lastMessage.thinking === currentMessageRef.current!.thinking) {
-                    return prev
-                  }
-
-                  // Create new array only when content has changed
-                  if (lastMessage?.role === "assistant") {
-                    const newMessages = [...prev]
-                    newMessages[newMessages.length - 1] = { ...currentMessageRef.current! }
-                    return newMessages
-                  }
-                  return [...prev, { ...currentMessageRef.current! }]
-                })
+              // Handle thinking content
+              if (content.content_type === "thinking" && content.thinking) {
+                currentMessageRef.current.thinking = (currentMessageRef.current.thinking || "") + content.thinking
+                // Auto-open thinking block when we receive thinking content
+                setOpenThinking(messages.length)
               }
-            } else if (content.type === "text_delta") {
-              if (isThinking) {
-                currentMessageRef.current.thinking += content.text
-              } else {
+              // Handle regular text content
+              else if (content.text) {
                 currentMessageRef.current.content += content.text
               }
 
-              // Update message immediately with optimized state update
+              // Always update messages state to ensure real-time updates
               setMessages(prev => {
-                // Avoid unnecessary array operations if content hasn't changed
-                const lastMessage = prev[prev.length - 1]
-                if (lastMessage?.role === "assistant" &&
-                  lastMessage.content === currentMessageRef.current!.content &&
-                  lastMessage.thinking === currentMessageRef.current!.thinking) {
-                  return prev
-                }
-
-                // Create new array only when content has changed
-                if (lastMessage?.role === "assistant") {
+                const newCurrentMessage = { ...currentMessageRef.current! }
+                
+                if (prev.length > 0 && prev[prev.length - 1]?.role === "assistant") {
                   const newMessages = [...prev]
-                  newMessages[newMessages.length - 1] = { ...currentMessageRef.current! }
+                  newMessages[newMessages.length - 1] = newCurrentMessage
                   return newMessages
                 }
-                return [...prev, { ...currentMessageRef.current! }]
+                return [...prev, newCurrentMessage]
               })
             }
+          } else if (data.type === "message_stop") {
+            // Thinking is complete when the message stops
+            setIsThinkingComplete(true)
           }
+        } catch (error) {
+          console.error("Error processing line:", error)
         }
       }
 

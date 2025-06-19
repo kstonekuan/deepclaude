@@ -106,6 +106,9 @@ pub enum StreamEvent {
     #[serde(rename = "usage")]
     Usage { usage: CombinedUsage },
 
+    #[serde(rename = "message_stop")]
+    MessageStop,
+
     #[serde(rename = "done")]
     Done,
 

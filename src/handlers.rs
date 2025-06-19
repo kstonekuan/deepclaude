@@ -477,6 +477,15 @@ pub(crate) async fn chat_stream(
                         crate::clients::anthropic::StreamEvent::MessageDelta { usage: None, .. } => {
                             // No usage data to send
                         }
+                        crate::clients::anthropic::StreamEvent::MessageStop => {
+                            println!("MessageStop event received");
+                            let _ = tx
+                                .send(Ok(Event::default().event("message_stop").data(
+                                    serde_json::to_string(&StreamEvent::MessageStop)
+                                    .unwrap_or_default(),
+                                )))
+                                .await;
+                        }
                         _ => {} // Handle other events if needed
                     }
                 }

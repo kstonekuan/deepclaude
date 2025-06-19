@@ -7,7 +7,7 @@ import { Button } from "./button"
 
 interface CopyButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
   value: string
-  src?: "code" | "message"
+  src?: "code" | "message" | "thinking"
 }
 
 export function CopyButton({
